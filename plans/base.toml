@@ -1,0 +1,12 @@
+[plan]
+name = "ubuntu-base"
+description = "Read-only Ubuntu host and driver readiness checks"
+
+checks = [
+  "host.os",
+  "host.kernel",
+  "pci.driver_binding",
+  "network.link",
+  "storage.root",
+  "gpu.render_device",
+]
