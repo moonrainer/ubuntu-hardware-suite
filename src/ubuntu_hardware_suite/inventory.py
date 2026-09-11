@@ -65,6 +65,23 @@ def parse_json_command(result: CommandResult) -> Any:
         return {}
 
 
+def parse_nvidia_smi(text: str) -> list[dict[str, str]]:
+    """Parse the stable CSV output requested from nvidia-smi."""
+    gpus: list[dict[str, str]] = []
+    fields = (
+        "name",
+        "driver_version",
+        "pci_bus_id",
+        "memory_total_mib",
+        "temperature_gpu_c",
+    )
+    for line in text.splitlines():
+        values = [value.strip() for value in line.split(",")]
+        if len(values) != len(fields):
+            continue
+        gpus.append(dict(zip(fields, values)))
+    return gpus
+
 def collect_inventory(
     runner: CommandRunner | None = None,
     timeout: float = 20.0,
@@ -76,6 +93,14 @@ def collect_inventory(
         "usb": runner.run(["lsusb"], timeout=timeout),
         "block": runner.run(["lsblk", "-J", "-o", "NAME,TYPE,FSTYPE,MOUNTPOINTS,SIZE"], timeout=timeout),
         "links": runner.run(["ip", "-j", "link"], timeout=timeout),
+        "nvidia_smi": runner.run(
+            [
+                "nvidia-smi",
+                "--query-gpu=name,driver_version,pci.bus_id,memory.total,temperature.gpu",
+                "--format=csv,noheader,nounits",
+            ],
+            timeout=timeout,
+        ),
     }
     parsed_links = parse_json_command(commands["links"])
     return HardwareInventory(
@@ -96,4 +121,5 @@ def collect_inventory(
         ],
         block_devices=parse_json_command(commands["block"]),
         network_links=parsed_links if isinstance(parsed_links, list) else [],
+        nvidia_gpus=parse_nvidia_smi(commands["nvidia_smi"].stdout),
     )

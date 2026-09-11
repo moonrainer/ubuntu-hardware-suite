@@ -9,6 +9,8 @@ plans, evidence, and machine-readable results.
 
 - A read-only inventory collector for OS, kernel, PCI, USB, block, and network
   information.
+- NVIDIA GPU compatibility evidence from PCI driver binding and `nvidia-smi`,
+  including model, driver version, PCI bus ID, memory, and temperature.
 - A check registry with stable check IDs.
 - A TOML test plan format.
 - JSON output for automation and JUnit XML output for CI systems.
@@ -59,6 +61,12 @@ checks = [
 
 Add a new check by implementing a function in
 `src/ubuntu_hardware_suite/checks.py` and registering it in `CHECKS`.
+
+The base plan includes `gpu.nvidia`. It skips on systems without NVIDIA
+hardware, and on NVIDIA systems it expects the proprietary `nvidia` kernel
+driver plus a working `nvidia-smi` query. An RTX 5080 is identified by the
+reported model name; the check does not hard-code that model, so it also
+covers other NVIDIA GPUs.
 
 ## Recommended roadmap
 

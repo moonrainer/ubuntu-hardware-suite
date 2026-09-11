@@ -61,6 +61,7 @@ class HardwareInventory:
     usb_devices: list[dict[str, Any]] = field(default_factory=list)
     block_devices: dict[str, Any] = field(default_factory=dict)
     network_links: list[dict[str, Any]] = field(default_factory=list)
+    nvidia_gpus: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)

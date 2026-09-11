@@ -9,4 +9,5 @@ checks = [
   "network.link",
   "storage.root",
   "gpu.render_device",
+  "gpu.nvidia",
 ]
