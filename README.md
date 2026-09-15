@@ -64,9 +64,9 @@ Add a new check by implementing a function in
 
 The base plan includes `gpu.nvidia`. It skips on systems without NVIDIA
 hardware, and on NVIDIA systems it expects the proprietary `nvidia` kernel
-driver plus a working `nvidia-smi` query. An RTX 5080 is identified by the
-reported model name; the check does not hard-code that model, so it also
-covers other NVIDIA GPUs.
+driver plus a working `nvidia-smi` query. The check is model-agnostic: an RTX
+5080, H100, L40S, RTX workstation card, or other NVIDIA GPU is validated using
+the reported PCI and `nvidia-smi` evidence rather than a hard-coded model list.
 
 ## Recommended roadmap
 

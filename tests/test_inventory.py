@@ -24,8 +24,8 @@ def test_parse_lspci_driver_sections():
 
 def test_parse_nvidia_smi_csv():
     output = (
-        "NVIDIA GeForce RTX 5080, 570.86.16, 00000000:01:00.0, "
-        "16376, 42\n"
+        "NVIDIA GeForce RTX 5080, 570.86.16, 00000000:01:00.0, 16376, 42\n"
+        "NVIDIA H100 PCIe, 570.86.16, 00000000:81:00.0, 81559, 39\n"
     )
     gpus = parse_nvidia_smi(output)
     assert gpus == [
@@ -35,5 +35,12 @@ def test_parse_nvidia_smi_csv():
             "pci_bus_id": "00000000:01:00.0",
             "memory_total_mib": "16376",
             "temperature_gpu_c": "42",
+        },
+        {
+            "name": "NVIDIA H100 PCIe",
+            "driver_version": "570.86.16",
+            "pci_bus_id": "00000000:81:00.0",
+            "memory_total_mib": "81559",
+            "temperature_gpu_c": "39",
         }
     ]

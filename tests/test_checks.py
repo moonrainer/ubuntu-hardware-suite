@@ -61,30 +61,37 @@ def test_storage_root_requires_root_mount():
     assert result.status == "fail"
 
 
-def test_nvidia_gpu_passes_for_rtx_5080():
-    result = check_nvidia_gpu(
-        inventory(
-            pci_devices=[
-                {
-                    "address": "01:00.0",
-                    "name": "NVIDIA Corporation GB203 [GeForce RTX 5080]",
-                    "driver": "nvidia",
-                    "modules": ["nvidia"],
-                }
-            ],
-            nvidia_gpus=[
-                {
-                    "name": "NVIDIA GeForce RTX 5080",
-                    "driver_version": "570.86.16",
-                    "pci_bus_id": "00000000:01:00.0",
-                    "memory_total_mib": "16376",
-                    "temperature_gpu_c": "42",
-                }
-            ],
+def test_nvidia_gpu_passes_for_supported_nvidia_models():
+    models = [
+        ("NVIDIA Corporation GB203 [GeForce RTX 5080]", "NVIDIA GeForce RTX 5080"),
+        ("NVIDIA Corporation AD102GL [RTX 6000 Ada Generation]", "NVIDIA RTX 6000 Ada Generation"),
+        ("NVIDIA Corporation GH100 [H100 PCIe]", "NVIDIA H100 PCIe"),
+        ("NVIDIA Corporation AD104GL [L40S]", "NVIDIA L40S"),
+    ]
+    for pci_name, smi_name in models:
+        result = check_nvidia_gpu(
+            inventory(
+                pci_devices=[
+                    {
+                        "address": "01:00.0",
+                        "name": pci_name,
+                        "driver": "nvidia",
+                        "modules": ["nvidia"],
+                    }
+                ],
+                nvidia_gpus=[
+                    {
+                        "name": smi_name,
+                        "driver_version": "570.86.16",
+                        "pci_bus_id": "00000000:01:00.0",
+                        "memory_total_mib": "16376",
+                        "temperature_gpu_c": "42",
+                    }
+                ],
+            )
         )
-    )
-    assert result.status == "pass"
-    assert "RTX 5080" in result.summary
+        assert result.status == "pass"
+        assert smi_name in result.summary
 
 
 def test_nvidia_gpu_fails_when_bound_to_nouveau():
@@ -93,7 +100,7 @@ def test_nvidia_gpu_fails_when_bound_to_nouveau():
             pci_devices=[
                 {
                     "address": "01:00.0",
-                    "name": "NVIDIA Corporation GB203 [GeForce RTX 5080]",
+                    "name": "NVIDIA Corporation GPU",
                     "driver": "nouveau",
                     "modules": ["nouveau"],
                 }
