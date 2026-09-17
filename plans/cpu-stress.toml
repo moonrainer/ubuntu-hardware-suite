@@ -1,0 +1,12 @@
+[plan]
+name = "ubuntu-cpu-stress"
+description = "Opt-in CPU stress smoke test using stress-ng"
+
+checks = [
+  "host.os",
+  "host.kernel",
+  "cpu.topology",
+  "cpu.frequency",
+  "cpu.cstates",
+  "cpu.stress",
+]

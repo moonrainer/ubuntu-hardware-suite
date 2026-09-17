@@ -92,6 +92,186 @@ def check_kernel(inventory: HardwareInventory) -> CheckResult:
     )
 
 
+def check_cpu_topology(inventory: HardwareInventory) -> CheckResult:
+    started = time.monotonic()
+    if inventory.platform.get("system") != "Linux":
+        return _result(
+            "cpu.topology",
+            "CPU topology is visible",
+            "skip",
+            "Skipped because the collector is running outside Linux.",
+            started=started,
+        )
+    if not inventory.cpu_info:
+        command = inventory.commands.get("cpu")
+        return _result(
+            "cpu.topology",
+            "CPU topology is visible",
+            "skip",
+            "lscpu returned no CPU topology data.",
+            details=command.stderr if command else "",
+            started=started,
+        )
+    cpus = inventory.cpu_info.get("CPU(s)", "")
+    model = inventory.cpu_info.get("Model name", "unknown CPU")
+    if not cpus or cpus == "0":
+        return _result(
+            "cpu.topology",
+            "CPU topology is visible",
+            "fail",
+            "No online CPU count was reported by lscpu.",
+            evidence=[Evidence("lscpu", inventory.cpu_info)],
+            started=started,
+        )
+    return _result(
+        "cpu.topology",
+        "CPU topology is visible",
+        "pass",
+        f"{cpus} CPU(s) visible: {model}.",
+        evidence=[Evidence("lscpu", inventory.cpu_info)],
+        started=started,
+    )
+
+
+def check_cpu_frequency(inventory: HardwareInventory) -> CheckResult:
+    started = time.monotonic()
+    if inventory.platform.get("system") != "Linux":
+        return _result(
+            "cpu.frequency",
+            "CPU frequency scaling is visible",
+            "skip",
+            "Skipped because the collector is running outside Linux.",
+            started=started,
+        )
+    if not inventory.cpu_frequencies:
+        return _result(
+            "cpu.frequency",
+            "CPU frequency scaling is visible",
+            "skip",
+            "No cpufreq sysfs entries were found.",
+            started=started,
+        )
+    missing_current = [
+        item["cpu"]
+        for item in inventory.cpu_frequencies
+        if "scaling_cur_freq" not in item
+    ]
+    evidence = [Evidence("sysfs.cpufreq", inventory.cpu_frequencies)]
+    if missing_current:
+        return _result(
+            "cpu.frequency",
+            "CPU frequency scaling is visible",
+            "fail",
+            "Some CPUs have cpufreq entries but no current frequency.",
+            details=", ".join(missing_current),
+            evidence=evidence,
+            started=started,
+        )
+    governors = sorted(
+        {
+            item.get("scaling_governor", "unknown")
+            for item in inventory.cpu_frequencies
+        }
+    )
+    return _result(
+        "cpu.frequency",
+        "CPU frequency scaling is visible",
+        "pass",
+        f"Frequency data is visible for {len(inventory.cpu_frequencies)} CPU(s); governors: {', '.join(governors)}.",
+        evidence=evidence,
+        started=started,
+    )
+
+
+def check_cpu_cstates(inventory: HardwareInventory) -> CheckResult:
+    started = time.monotonic()
+    if inventory.platform.get("system") != "Linux":
+        return _result(
+            "cpu.cstates",
+            "CPU C-states are available",
+            "skip",
+            "Skipped because the collector is running outside Linux.",
+            started=started,
+        )
+    if not inventory.cpu_idle_states:
+        return _result(
+            "cpu.cstates",
+            "CPU C-states are available",
+            "skip",
+            "No cpuidle C-state sysfs entries were found.",
+            started=started,
+        )
+    enabled = [
+        state
+        for state in inventory.cpu_idle_states
+        if state.get("disable") in {None, "0"}
+    ]
+    evidence = [Evidence("sysfs.cpuidle", inventory.cpu_idle_states)]
+    if not enabled:
+        return _result(
+            "cpu.cstates",
+            "CPU C-states are available",
+            "fail",
+            "C-state entries exist, but every reported state is disabled.",
+            evidence=evidence,
+            started=started,
+        )
+    state_names = sorted(
+        {
+            state.get("name", state.get("state", "unknown"))
+            for state in enabled
+        }
+    )
+    return _result(
+        "cpu.cstates",
+        "CPU C-states are available",
+        "pass",
+        f"{len(enabled)} enabled C-state entries found: {', '.join(state_names)}.",
+        evidence=evidence,
+        started=started,
+    )
+
+
+def check_cpu_stress(inventory: HardwareInventory) -> CheckResult:
+    started = time.monotonic()
+    command = inventory.commands.get("cpu_stress")
+    if command is None:
+        return _result(
+            "cpu.stress",
+            "CPU stress smoke test",
+            "skip",
+            "CPU stress was not requested by the active plan.",
+            started=started,
+        )
+    if command.returncode is None:
+        return _result(
+            "cpu.stress",
+            "CPU stress smoke test",
+            "skip",
+            "stress-ng is unavailable or timed out.",
+            details=command.stderr,
+            evidence=[Evidence("stress-ng", command.to_dict())],
+            started=started,
+        )
+    if command.returncode != 0:
+        return _result(
+            "cpu.stress",
+            "CPU stress smoke test",
+            "fail",
+            "stress-ng reported a CPU stress failure.",
+            details=command.stderr or command.stdout,
+            evidence=[Evidence("stress-ng", command.to_dict())],
+            started=started,
+        )
+    return _result(
+        "cpu.stress",
+        "CPU stress smoke test",
+        "pass",
+        "stress-ng completed a verified 30 second CPU stress run.",
+        evidence=[Evidence("stress-ng", command.to_dict())],
+        started=started,
+    )
+
 def check_pci_driver_binding(inventory: HardwareInventory) -> CheckResult:
     started = time.monotonic()
     command = inventory.commands["pci"]
@@ -356,6 +536,10 @@ def check_nvidia_gpu(inventory: HardwareInventory) -> CheckResult:
 CHECKS: dict[str, CheckFunction] = {
     "host.os": check_host_os,
     "host.kernel": check_kernel,
+    "cpu.topology": check_cpu_topology,
+    "cpu.frequency": check_cpu_frequency,
+    "cpu.cstates": check_cpu_cstates,
+    "cpu.stress": check_cpu_stress,
     "pci.driver_binding": check_pci_driver_binding,
     "network.link": check_network_link,
     "storage.root": check_storage_root,

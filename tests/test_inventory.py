@@ -1,4 +1,4 @@
-from ubuntu_hardware_suite.inventory import parse_lspci, parse_nvidia_smi, parse_os_release
+from ubuntu_hardware_suite.inventory import collect_cpu_frequencies, collect_cpu_idle_states, parse_lscpu_json, parse_lspci, parse_nvidia_smi, parse_os_release
 
 
 def test_parse_os_release():
@@ -43,4 +43,35 @@ def test_parse_nvidia_smi_csv():
             "memory_total_mib": "81559",
             "temperature_gpu_c": "39",
         }
+    ]
+
+
+def test_parse_lscpu_json():
+    text = '{"lscpu":[{"field":"CPU(s):","data":"16"},{"field":"Model name:","data":"Example CPU"}]}'
+    assert parse_lscpu_json(text) == {"CPU(s)": "16", "Model name": "Example CPU"}
+
+
+def test_collect_cpu_frequencies_from_sysfs_fixture(tmp_path):
+    cpufreq = tmp_path / "cpu0" / "cpufreq"
+    cpufreq.mkdir(parents=True)
+    (cpufreq / "scaling_driver").write_text("intel_pstate\n", encoding="utf-8")
+    (cpufreq / "scaling_governor").write_text("powersave\n", encoding="utf-8")
+    (cpufreq / "scaling_cur_freq").write_text("2400000\n", encoding="utf-8")
+    assert collect_cpu_frequencies(tmp_path) == [
+        {
+            "cpu": "cpu0",
+            "scaling_driver": "intel_pstate",
+            "scaling_governor": "powersave",
+            "scaling_cur_freq": "2400000",
+        }
+    ]
+
+
+def test_collect_cpu_idle_states_from_sysfs_fixture(tmp_path):
+    state = tmp_path / "cpu0" / "cpuidle" / "state1"
+    state.mkdir(parents=True)
+    (state / "name").write_text("C1\n", encoding="utf-8")
+    (state / "disable").write_text("0\n", encoding="utf-8")
+    assert collect_cpu_idle_states(tmp_path) == [
+        {"cpu": "cpu0", "state": "state1", "name": "C1", "disable": "0"}
     ]

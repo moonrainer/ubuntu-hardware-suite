@@ -7,8 +7,9 @@ plans, evidence, and machine-readable results.
 
 ## What is included
 
-- A read-only inventory collector for OS, kernel, PCI, USB, block, and network
-  information.
+- A read-only inventory collector for OS, kernel, CPU, PCI, USB, block, and
+  network information.
+- CPU topology, frequency-scaling, C-state, and opt-in `stress-ng` stress checks.
 - NVIDIA GPU compatibility evidence from PCI driver binding and `nvidia-smi`,
   including model, driver version, PCI bus ID, memory, and temperature.
 - A check registry with stable check IDs.
@@ -35,6 +36,9 @@ python -m pip install -e .
 hwcheck list-checks
 hwcheck inventory --output inventory.json
 hwcheck run --plan plans/base.toml --output results
+# Optional CPU stress smoke test; install stress-ng first.
+sudo apt install -y stress-ng
+hwcheck run --plan plans/cpu-stress.toml --output results-cpu-stress --timeout 60
 ```
 
 The command writes `results/report.json` and `results/junit.xml`. The process
@@ -53,6 +57,9 @@ description = "Read-only host and driver readiness checks"
 checks = [
   "host.os",
   "host.kernel",
+  "cpu.topology",
+  "cpu.frequency",
+  "cpu.cstates",
   "pci.driver_binding",
   "network.link",
   "storage.root",
@@ -61,6 +68,18 @@ checks = [
 
 Add a new check by implementing a function in
 `src/ubuntu_hardware_suite/checks.py` and registering it in `CHECKS`.
+
+The base plan includes read-only CPU checks:
+
+- `cpu.topology` validates that `lscpu -J` reports online CPU topology.
+- `cpu.frequency` validates visible cpufreq sysfs data and current frequency.
+- `cpu.cstates` validates that cpuidle C-state entries exist and at least one
+  reported state is enabled.
+
+`cpu.stress` is intentionally excluded from the base plan. Run
+`plans/cpu-stress.toml` when you want a short verified `stress-ng` CPU load.
+The suite reports C-state status; it does not change BIOS, kernel boot, or
+runtime power-management settings automatically.
 
 The base plan includes `gpu.nvidia`. It skips on systems without NVIDIA
 hardware, and on NVIDIA systems it expects the proprietary `nvidia` kernel

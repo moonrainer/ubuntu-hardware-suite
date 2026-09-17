@@ -34,7 +34,11 @@ def load_plan(path: Path) -> dict[str, Any]:
 def run_plan(plan_path: Path, output_dir: Path, timeout: float) -> int:
     started_at = _utc_now()
     plan = load_plan(plan_path)
-    inventory = collect_inventory(CommandRunner(), timeout=timeout)
+    inventory = collect_inventory(
+        CommandRunner(),
+        timeout=timeout,
+        requested_checks=plan["checks"],
+    )
     results: list[CheckResult] = []
     for check_id in plan["checks"]:
         started = time.monotonic()

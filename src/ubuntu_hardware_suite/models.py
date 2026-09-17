@@ -62,6 +62,9 @@ class HardwareInventory:
     block_devices: dict[str, Any] = field(default_factory=dict)
     network_links: list[dict[str, Any]] = field(default_factory=list)
     nvidia_gpus: list[dict[str, Any]] = field(default_factory=list)
+    cpu_info: dict[str, Any] = field(default_factory=dict)
+    cpu_frequencies: list[dict[str, Any]] = field(default_factory=list)
+    cpu_idle_states: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)

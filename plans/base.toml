@@ -5,6 +5,9 @@ description = "Read-only Ubuntu host and driver readiness checks"
 checks = [
   "host.os",
   "host.kernel",
+  "cpu.topology",
+  "cpu.frequency",
+  "cpu.cstates",
   "pci.driver_binding",
   "network.link",
   "storage.root",
