@@ -66,8 +66,17 @@ checks = [
 ]
 ```
 
-Add a new check by implementing a function in
-`src/ubuntu_hardware_suite/checks.py` and registering it in `CHECKS`.
+Hardware checks are organized by class under `src/ubuntu_hardware_suite/hardware/`:
+
+- `test.py` provides the shared `HardwareTest` base class and result helpers.
+- `cpu.py`, `storage.py`, `network.py`, `video.py`, and `pci.py` own their
+  hardware-specific checks.
+- `memory.py` is reserved for future memory coverage.
+- `checks.py` remains as a compatibility registry facade for the CLI and plans.
+
+Add a new check by implementing it in the hardware-specific class and returning
+it from that class's `checks()` method. New hardware families should get their
+own module and class inheriting from `HardwareTest`.
 
 The base plan includes read-only CPU checks:
 
