@@ -1,4 +1,4 @@
-from ubuntu_hardware_suite.inventory import collect_cpu_frequencies, collect_cpu_idle_states, parse_lscpu_json, parse_lspci, parse_nvidia_smi, parse_os_release
+from ubuntu_hardware_suite.inventory import collect_cpu_cache, collect_cpu_clocksource, collect_cpu_numa, collect_cpu_topology, collect_edac_counters, collect_thermal_throttle_counts, parse_cpuinfo, parse_meminfo, collect_cpu_frequencies, collect_cpu_idle_states, parse_lscpu_json, parse_lspci, parse_nvidia_smi, parse_os_release
 
 
 def test_parse_os_release():
@@ -75,3 +75,47 @@ def test_collect_cpu_idle_states_from_sysfs_fixture(tmp_path):
     assert collect_cpu_idle_states(tmp_path) == [
         {"cpu": "cpu0", "state": "state1", "name": "C1", "disable": "0"}
     ]
+
+def test_parse_meminfo_and_cpuinfo():
+    mem = parse_meminfo("MemTotal:       16384 kB\nMemFree:          1024 kB\n")
+    cpu = parse_cpuinfo(
+        "vendor_id\t: GenuineIntel\nmodel name\t: Example CPU\nmicrocode\t: 0x1\nflags\t: fpu tsc\n"
+    )
+    assert mem["MemTotal"] == 16384
+    assert cpu["vendor_id"] == "GenuineIntel"
+    assert cpu["microcodes"] == ["0x1"]
+    assert "tsc" in cpu["flags"]
+
+
+def test_collect_additional_cpu_sysfs_evidence(tmp_path):
+    topology = tmp_path / "cpu0" / "topology"
+    topology.mkdir(parents=True)
+    (topology / "physical_package_id").write_text("0\n", encoding="utf-8")
+    (topology / "core_id").write_text("0\n", encoding="utf-8")
+    cache = tmp_path / "cpu0" / "cache" / "index0"
+    cache.mkdir(parents=True)
+    (cache / "level").write_text("1\n", encoding="utf-8")
+    (cache / "type").write_text("Data\n", encoding="utf-8")
+    (cache / "size").write_text("32K\n", encoding="utf-8")
+    assert collect_cpu_topology(tmp_path)[0]["physical_package_id"] == "0"
+    assert collect_cpu_cache(tmp_path)[0]["type"] == "Data"
+
+
+def test_collect_numa_clocksource_edac_and_throttle_fixtures(tmp_path):
+    node = tmp_path / "node"
+    (node / "node0").mkdir(parents=True)
+    (node / "online").write_text("0\n", encoding="utf-8")
+    (node / "node0" / "cpulist").write_text("0-3\n", encoding="utf-8")
+    clock = tmp_path / "clock"
+    clock.mkdir()
+    (clock / "current_clocksource").write_text("tsc\n", encoding="utf-8")
+    edac = tmp_path / "edac" / "mc0"
+    edac.mkdir(parents=True)
+    (edac / "ce_count").write_text("1\n", encoding="utf-8")
+    thermal = tmp_path / "cpu0" / "thermal_throttle"
+    thermal.mkdir(parents=True)
+    (thermal / "core_throttle_count").write_text("0\n", encoding="utf-8")
+    assert collect_cpu_numa(node)["online"] == "0"
+    assert collect_cpu_clocksource(clock)["current"] == "tsc"
+    assert collect_edac_counters(tmp_path / "edac")[0]["ce_count"] == "1"
+    assert collect_thermal_throttle_counts(tmp_path)[0]["core_throttle_count"] == "0"

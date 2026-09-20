@@ -1,0 +1,22 @@
+[plan]
+name = "ubuntu-cpu-extended"
+description = "Read-only extended CPU, clock, C-state and RAS checks"
+
+checks = [
+  "host.os",
+  "host.kernel",
+  "cpu.identity",
+  "cpu.ram_per_core",
+  "firmware.microcode",
+  "security.vulnerabilities",
+  "cpu.topology",
+  "cpu.cache",
+  "cpu.numa",
+  "cpu.frequency",
+  "cpu.cstates",
+  "cpu.cstates.residency",
+  "cpu.clocksource",
+  "ras.edac",
+  "ras.throttle_history",
+  "ras.mce",
+]

@@ -65,6 +65,16 @@ class HardwareInventory:
     cpu_info: dict[str, Any] = field(default_factory=dict)
     cpu_frequencies: list[dict[str, Any]] = field(default_factory=list)
     cpu_idle_states: list[dict[str, Any]] = field(default_factory=list)
+    cpu_identity: dict[str, Any] = field(default_factory=dict)
+    mem_info: dict[str, Any] = field(default_factory=dict)
+    cpu_microcodes: list[str] = field(default_factory=list)
+    cpu_vulnerabilities: dict[str, str] = field(default_factory=dict)
+    cpu_topology: list[dict[str, Any]] = field(default_factory=list)
+    cpu_cache: list[dict[str, Any]] = field(default_factory=list)
+    cpu_numa: dict[str, Any] = field(default_factory=dict)
+    cpu_clocksource: dict[str, str] = field(default_factory=dict)
+    edac_counters: list[dict[str, Any]] = field(default_factory=list)
+    thermal_throttle_counts: list[dict[str, Any]] = field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)

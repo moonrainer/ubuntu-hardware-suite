@@ -9,7 +9,7 @@ plans, evidence, and machine-readable results.
 
 - A read-only inventory collector for OS, kernel, CPU, PCI, USB, block, and
   network information.
-- CPU topology, frequency-scaling, C-state, and opt-in `stress-ng` stress checks.
+- CPU identity, RAM-per-core, microcode, vulnerability, topology, cache, NUMA, frequency-scaling, C-state, clocksource, RAS, and opt-in `stress-ng` stress checks.
 - NVIDIA GPU compatibility evidence from PCI driver binding and `nvidia-smi`,
   including model, driver version, PCI bus ID, memory, and temperature.
 - A check registry with stable check IDs.
@@ -78,8 +78,18 @@ Add a new check by implementing it in the hardware-specific class and returning
 it from that class's `checks()` method. New hardware families should get their
 own module and class inheriting from `HardwareTest`.
 
+The CPU checks mirror the useful safe-by-default parts of the reference
+`ubuntu-cpu-suite`: identity, RAM-per-core, microcode consistency,
+vulnerability mitigation state, topology, cache hierarchy, NUMA visibility,
+frequency scaling, C-state exposure/residency, clocksource, EDAC counters, and
+thermal-throttle history. Kernel-log machine-check scanning lives in
+`plans/cpu-extended.toml` because it can be slower or permission-dependent.
 The base plan includes read-only CPU checks:
 
+- `cpu.identity` records vendor/model data from `/proc/cpuinfo` and `lscpu`.
+- `cpu.ram_per_core` enforces a 1.5 GiB/logical-CPU certification threshold.
+- `firmware.microcode` fails mixed microcode revisions across CPUs.
+- `security.vulnerabilities` fails entries that report `Vulnerable`.
 - `cpu.topology` validates that `lscpu -J` reports online CPU topology.
 - `cpu.frequency` validates visible cpufreq sysfs data and current frequency.
 - `cpu.cstates` validates that cpuidle C-state entries exist and at least one

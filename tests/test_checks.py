@@ -1,4 +1,14 @@
 from ubuntu_hardware_suite.checks import (
+    check_cpu_cache,
+    check_cpu_clocksource,
+    check_cpu_cstate_residency,
+    check_cpu_edac,
+    check_cpu_identity,
+    check_cpu_microcode,
+    check_cpu_numa,
+    check_cpu_ram_per_core,
+    check_cpu_throttle_history,
+    check_cpu_vulnerabilities,
     check_cpu_cstates,
     check_cpu_frequency,
     check_cpu_stress,
@@ -34,7 +44,16 @@ def inventory(**overrides):
         "cpu_info": {},
         "cpu_frequencies": [],
         "cpu_idle_states": [],
-    }
+        "cpu_identity": {},
+        "mem_info": {},
+        "cpu_microcodes": [],
+        "cpu_vulnerabilities": {},
+        "cpu_topology": [],
+        "cpu_cache": [],
+        "cpu_numa": {},
+        "cpu_clocksource": {},
+        "edac_counters": [],
+        "thermal_throttle_counts": [],    }
     values.update(overrides)
     return HardwareInventory(**values)
 
@@ -172,3 +191,62 @@ def test_cpu_stress_reports_stress_ng_result():
     )
     assert passed.status == "pass"
     assert failed.status == "fail"
+
+def test_cpu_identity_passes_with_cpuinfo_data():
+    result = check_cpu_identity(
+        inventory(cpu_identity={"vendor_id": "GenuineIntel", "model_name": "Example CPU"})
+    )
+    assert result.status == "pass"
+    assert "GenuineIntel" in result.summary
+
+
+def test_cpu_ram_per_core_enforces_threshold():
+    passed = check_cpu_ram_per_core(
+        inventory(mem_info={"MemTotal": 32 * 1048576}, cpu_info={"CPU(s)": "16"})
+    )
+    failed = check_cpu_ram_per_core(
+        inventory(mem_info={"MemTotal": 4 * 1048576}, cpu_info={"CPU(s)": "8"})
+    )
+    assert passed.status == "pass"
+    assert failed.status == "fail"
+
+
+def test_cpu_microcode_fails_on_mixed_revisions():
+    result = check_cpu_microcode(inventory(cpu_microcodes=["0x1", "0x2"]))
+    assert result.status == "fail"
+
+
+def test_cpu_vulnerabilities_fail_when_exposed():
+    result = check_cpu_vulnerabilities(
+        inventory(cpu_vulnerabilities={"spectre_v2": "Vulnerable"})
+    )
+    assert result.status == "fail"
+
+
+def test_cpu_cache_numa_clocksource_pass_with_sysfs_data():
+    cache = check_cpu_cache(
+        inventory(cpu_cache=[{"level": "1", "type": "Data", "size": "32K"}])
+    )
+    numa = check_cpu_numa(inventory(cpu_numa={"online": "0", "nodes": []}))
+    clock = check_cpu_clocksource(
+        inventory(cpu_clocksource={"current": "tsc", "available": "tsc hpet"})
+    )
+    assert cache.status == "pass"
+    assert numa.status == "pass"
+    assert clock.status == "pass"
+
+
+def test_cpu_cstate_residency_requires_usage_activity():
+    result = check_cpu_cstate_residency(
+        inventory(cpu_idle_states=[{"name": "C1", "disable": "0", "usage": "10"}])
+    )
+    assert result.status == "pass"
+
+
+def test_cpu_ras_counters_report_failures():
+    edac = check_cpu_edac(inventory(edac_counters=[{"ce_count": "0", "ue_count": "1"}]))
+    throttle = check_cpu_throttle_history(
+        inventory(thermal_throttle_counts=[{"core_throttle_count": "1", "package_throttle_count": "0"}])
+    )
+    assert edac.status == "fail"
+    assert throttle.status == "fail"

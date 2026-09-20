@@ -5,6 +5,10 @@ description = "Opt-in CPU stress smoke test using stress-ng"
 checks = [
   "host.os",
   "host.kernel",
+  "cpu.identity",
+  "cpu.ram_per_core",
+  "firmware.microcode",
+  "security.vulnerabilities",
   "cpu.topology",
   "cpu.frequency",
   "cpu.cstates",
